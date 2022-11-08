@@ -140,7 +140,7 @@ async function run() {
         //get reviews by userEmail
         app.get('/myReviews', JWTVerification, async (req, res) => {
 
-            const decoded = req.decoded;
+            const decoded = req.decoded
 
             if (decoded.email !== req.query.email) {
                 return res.status(403).json({
