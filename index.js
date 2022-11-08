@@ -3,6 +3,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 
 app.get('/', (req, res) => {
     res.send(`Server is running on port ${port}`);
@@ -17,7 +18,44 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
+function JWTVerification(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({
+            status: 401,
+            message: 'Unauthorized'
+        })
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(401).json({
+                status: 401,
+                message: 'Unauthorized'
+            })
+        }
+        req.decoded = decoded;
+        next();
+    })
+}
+
+
+
 async function run() {
+
+
+
+    //JWT
+    app.post('/jwt', async (req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+        res.send({ token });
+    })
+
+
+
+
+
     try {
         console.log('database connection');
         const servicesCollection = client.db("jacksPhotography").collection("services");
@@ -50,6 +88,32 @@ async function run() {
 
         })
 
+        app.get('/customerReviews/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const cursor = reviewsCollection.find(query);
+            const reviews = await cursor.toArray();
+            res.send(reviews);
+
+        })
+
+        //updateCustomer reviews
+        app.patch('/customerReviews/:id', async (req, res) => {
+            const id = req.params.id;
+            const body = req.body.reviewDetails;
+            console.log(body)
+            const query = { _id: ObjectId(id) };
+            const updatedReview = {
+                $set: {
+                    reviewDetails: body
+                }
+            }
+            const result = await reviewsCollection.updateOne(query, updatedReview);
+            res.send(result);
+
+        })
+
+
 
         //post reviews
         app.post('/customerReviews', async (req, res) => {
@@ -74,7 +138,17 @@ async function run() {
         })
 
         //get reviews by userEmail
-        app.get('/myReviews', async (req, res) => {
+        app.get('/myReviews', JWTVerification, async (req, res) => {
+
+            const decoded = req.decoded;
+
+            if (decoded.email !== req.query.email) {
+                return res.status(403).json({
+                    status: 403,
+                })
+            }
+
+
             let query = {};
             if (req.query.email) {
                 query = {
@@ -91,6 +165,14 @@ async function run() {
             const id = req.body;
             const query = { _id: ObjectId(id) };
             const result = await reviewsCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        //post services
+        app.post('/services', async (req, res) => {
+            const service = req.body;
+            console.log(service);
+            const result = await servicesCollection.insertOne(service);
             res.send(result);
         })
 
