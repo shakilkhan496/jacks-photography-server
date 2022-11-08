@@ -58,6 +58,7 @@ async function run() {
             const result = await reviewsCollection.insertOne(review);
             res.send(result);
         })
+
         //get reviews by productID
         app.get('/customerReviews', async (req, res) => {
             let query = {};
@@ -70,6 +71,27 @@ async function run() {
             const reviews = await cursor.toArray();
             res.send(reviews);
             console.log(query);
+        })
+
+        //get reviews by userEmail
+        app.get('/myReviews', async (req, res) => {
+            let query = {};
+            if (req.query.email) {
+                query = {
+                    email: req.query.email
+                }
+            }
+            const cursor = reviewsCollection.find(query);
+            const reviews = await cursor.toArray();
+            res.send(reviews);
+            console.log(query);
+        })
+
+        app.delete('/customerReviews', async (req, res) => {
+            const id = req.body;
+            const query = { _id: ObjectId(id) };
+            const result = await reviewsCollection.deleteOne(query);
+            res.send(result);
         })
 
 
