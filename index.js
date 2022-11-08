@@ -131,7 +131,7 @@ async function run() {
                     productID: req.query.productID
                 }
             }
-            const cursor = reviewsCollection.find(query);
+            const cursor = reviewsCollection.find(query).sort({ date: -1, });
             const reviews = await cursor.toArray();
             res.send(reviews);
             console.log(query);
